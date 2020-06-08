@@ -1,0 +1,370 @@
+<html>
+
+<head>
+	<title>Canvas & Mootools</title>
+	<script type="text/javascript"
+		src="https://cdnjs.cloudflare.com/ajax/libs/mootools/1.6.0/mootools-core.js"></script>
+	<script type="text/javascript">
+		var canvas, gun, rockets, timer = 3, idTimerRecharge, idTimerCreationEnemies, idTimerObjectMove, enemies, experience = 0, pauseFlag = false, life = 3, name;
+		var speed = 5, size = 30, deviation = 2;
+		Gun = new Class({
+			initialize: function () {
+				this.posX = 70;
+				this.posY = 100;
+				this.size = 10;
+			},
+			size: 0,
+			posX: 0,
+			posY: 0,
+			colour: "green",
+			draw: function (ctx) {
+				with (this) {
+					ctx.beginPath();
+					ctx.moveTo(posX - 6 * size, posY - 2 * size);
+					ctx.lineTo(posX - 5 * size, posY - 1 * size);
+					ctx.lineTo(posX + 0 * size, posY - 1 * size);
+					ctx.lineTo(posX - 3 * size, posY - 4 * size);
+					ctx.lineTo(posX - 1 * size, posY - 4 * size);
+					ctx.lineTo(posX + 2 * size, posY - 1 * size);
+					ctx.lineTo(posX + 5 * size, posY - 1 * size);
+					ctx.lineTo(posX + 7 * size, posY + 1 * size);
+					ctx.lineTo(posX + 2 * size, posY + 1 * size);
+					ctx.lineTo(posX - 1 * size, posY + 4 * size);
+					ctx.lineTo(posX - 3 * size, posY + 4 * size);
+					ctx.lineTo(posX + 0 * size, posY + 1 * size);
+					ctx.lineTo(posX - 6 * size, posY + 1 * size);
+					ctx.lineTo(posX - 6 * size, posY - 2 * size);
+					ctx.fill();
+				}
+			}
+		});
+		Rockets = new Class({
+			initialize: function () {
+				this.posX = 100;
+				this.posY = event.clientY;
+				this.size = 5;
+			},
+			size: 0,
+			posX: 0,
+			posY: 0,
+			colour: "red",
+			draw: function (ctx) {
+				with (this) {
+					ctx.moveTo(posX - 5 * size, posY - 1.5 * size);
+					ctx.lineTo(posX - 4 * size, posY - 1.5 * size);
+					ctx.lineTo(posX - 3 * size, posY - 0.5 * size);
+					ctx.lineTo(posX - 1 * size, posY - 0.5 * size);
+					ctx.lineTo(posX - 0 * size, posY - 0 * size);
+					ctx.lineTo(posX - 1 * size, posY + 0.5 * size);
+					ctx.lineTo(posX - 3 * size, posY + 0.5 * size);
+					ctx.lineTo(posX - 4 * size, posY + 1.5 * size);
+					ctx.lineTo(posX - 5 * size, posY + 1.5 * size);
+					ctx.lineTo(posX - 4 * size, posY + 0.5 * size);
+					ctx.lineTo(posX - 4 * size, posY - 0.5 * size);
+					ctx.lineTo(posX - 5 * size, posY - 1.5 * size);
+					ctx.closePath();
+					ctx.fill();
+				}
+			}
+		});
+
+		Enemies = new Class({
+			initialize: function () {
+				this.posX = canvas.width;
+				this.posY = Math.random() * canvas.height;
+				this.size = size;;
+			},
+			size: 0,
+			posX: 0,
+			posY: 0,
+
+		});
+		Planes = new Class({
+			Extends: Enemies,
+			initialize: function (pX, pY) {
+				this.parent();
+			},
+			draw: function (ctx) {
+				with (this) {
+					ctx.beginPath();
+					ctx.arc(posX - 8, posY - 8, size, 0, 2 * Math.PI, false);
+					ctx.closePath();
+					ctx.fill();
+				}
+			}
+		});
+		Tanks = new Class({
+			Extends: Enemies,
+			initialize: function (pX, pY) {
+				this.parent();
+			},
+			draw: function (ctx) {
+				with (this) {
+					ctx.fillRect(posX - .5 * size, posY - 0.5 * size, size * 2, size * 2);
+				}
+			}
+		});
+		// закрашиваем канвас градиентным фоном
+		function drawBack(ctx, col1, col2, w, h) {
+			ctx.save();
+			var g = ctx.createLinearGradient(0, 0, 0, h);
+			g.addColorStop(0, col1);
+			g.addColorStop(1, col2);
+			ctx.fillStyle = g;
+			ctx.fillRect(0, 0, w, h);
+			ctx.restore();
+			ctx.font = "20px Georgia";
+			ctx.fillText("Перезврядка: " + timer + "     ИМЯ: " + person.name + "     Опыт: " + person.experience + "     ЖИЗНИ: " + life, 10, 20);
+		}
+		var person = {
+			name,
+			experience,
+		}
+		// инициализация работы
+		function init() {
+			canvas = document.getElementById('canvas');
+			if (canvas.getContext) {
+				ctx = canvas.getContext('2d');
+				drawBack(ctx, 'rgb(126, 193, 255)', 'rgb(109, 223, 153)', canvas.width, canvas.height);
+				gun = new Gun();
+				gun.draw(ctx);
+				rockets = [];
+				enemies = [];
+				objectMove();
+				recharge();
+				creationEnemies();
+				name = prompt("Введите ваше имя:", "anonymous");
+				person.name = name;
+				//var array=[];
+				//localStorage.setItem('arr', JSON.stringify(array));
+			}
+		}
+		//сохранение при проиграше 
+		function saveResult() {
+			pause();
+			pauseFlag = false;
+			alert("Вы проиграли");
+			drawTable();
+		}
+		function drawTable() {
+			var array = JSON.parse(localStorage.getItem('arr'));
+			array.push(person);
+			sortTable(array);
+			localStorage.setItem('arr', JSON.stringify(array));
+			var element = document.getElementById('text');
+			element.innerHTML = '';
+			var tb = document.createElement('table');
+			element.appendChild(tb);
+			var tbod = document.createElement('TBODY');
+			tb.appendChild(tbod);
+			var tr = document.createElement("TR");
+			tbod.appendChild(tr);
+			var td1 = document.createElement("TD");
+			td1.innerHTML = "Место";
+			tr.appendChild(td1);
+			var td2 = document.createElement("TD");
+			td2.innerHTML = "Имя";
+			tr.appendChild(td2);
+			var td3 = document.createElement("TD");
+			td3.innerHTML = "Опыт";
+			tr.appendChild(td3);
+			for (var i = 0; i < array.length; i++) {
+				var tr = document.createElement("TR");
+				tbod.appendChild(tr);
+				var td1 = document.createElement("TD");
+				td1.innerHTML = i + 1;
+				tr.appendChild(td1);
+				var td2 = document.createElement("TD");
+				td2.innerHTML = array[i].name;
+				tr.appendChild(td2);
+				var td3 = document.createElement("TD");
+				td3.innerHTML = array[i].experience;
+				tr.appendChild(td3);
+			}
+		}
+		//сортируем таблицу лидеров
+		function sortTable(array) {
+			for (var i = 0; i < (array.length - 1); i++) {
+				for (var j = 0; j < array.length - i - 1; j++) {
+					if (array[j].experience < array[j + 1].experience) {
+						var temp = array[j + 1];
+						array[j + 1] = array[j];
+						array[j] = temp;
+					}
+				}
+			}
+		}
+		//создание врагов 
+		function creationEnemies() {
+			idTimerCreationEnemies = setInterval('creationEnemies1();', 3000 + Math.random() * 3000);
+		}
+		function creationEnemies1() {
+			if (Math.random() < 0.5)
+				var item = new Planes();
+			else
+				var item = new Tanks();
+			item.draw(ctx);
+			enemies.push(item);
+		}
+		//перезарядкка
+		function recharge() {
+			if (timer > 0) {
+				idTimerRecharge = setInterval('recharge1();', 100);
+			}
+		}
+		function recharge1() {
+			if (timer > 0) {
+				timer = Math.round((timer - 0.1) * 10) / 10;
+			}
+			else {
+				clearInterval(idTimerRecharge);
+			}
+		}
+		function gunMove() {
+			drawBack(ctx, 'rgb(126, 193, 255)', 'rgb(109, 223, 153)', canvas.width, canvas.height);
+			while (gun.posY != event.clientY) {
+				if (gun.posY < event.clientY) {
+					gun.posY++;
+					gun.draw(ctx);
+				}
+				else {
+					gun.posY--;
+					gun.draw(ctx);
+				}
+			}
+			gun.draw(ctx);
+			for (var i = 0; i < rockets.length; i++) {
+				rockets[i].draw(ctx);
+			}
+			for (var i = 0; i < enemies.length; i++)
+				enemies[i].draw(ctx);
+		}
+		//выстрел
+		function creationRockets() {
+			if ((timer == 0) && (!pauseFlag)) {
+				var item = new Rockets();
+				item.draw(ctx);
+				rockets.push(item);
+				timer = 3;
+				recharge();
+			}
+		}
+		function objectMove() {
+			idTimerObjectMove = setInterval('objectMove1();', 50);
+		}
+		function objectMove1() {
+			drawBack(ctx, 'rgb(126, 193, 255)', 'rgb(109, 223, 153)', canvas.width, canvas.height);
+			gun.draw(ctx);
+			//Движение ракет 
+			for (var i = 0; i < rockets.length; i++) {
+				rockets[i].posX = rockets[i].posX + 15;
+				rockets[i].draw(ctx);
+				if (rockets[i].posX > canvas.width) {
+					rockets.splice(i, 1);
+					i--;
+				}
+			}
+			//ДВИЖЕНИЕ ВРАГОВ
+			for (var i = 0; i < enemies.length; i++) {
+				enemies[i].posX = enemies[i].posX - speed;
+				enemies[i].posY = enemies[i].posY + (Math.random() * deviation - deviation / 2);
+				enemies[i].draw(ctx);
+				if (enemies[i].posX < 0) {
+					enemies.splice(i, 1);
+					i--;
+					life--;
+					if (life < 1) {
+						saveResult();
+					}
+				}
+			}
+			for (var i = 0; i < rockets.length; i++) {
+				for (var j = 0; j < enemies.length; j++) {
+					var d = Dist(rockets[i].posX, rockets[i].posY, enemies[j].posX, enemies[j].posY);
+					if (d <= size + 10) {//(figures[i].size + figures[j].size)) {  //ПОФИКСИТЬ
+						enemies.splice(j, 1);
+						j--;
+						rockets.splice(i, 1);
+						i--;
+						person.experience += 10;
+					}
+				}
+			}
+		}
+		function Dist(x1, y1, x2, y2) {
+			return Math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+		}
+		function pause() {
+			pauseFlag = true;
+			clearInterval(idTimerRecharge);
+			clearInterval(idTimerObjectMove);
+			clearInterval(idTimerCreationEnemies);
+		}
+		function start() {
+			if (pauseFlag) {
+				recharge();
+				creationEnemies();
+				objectMove();
+				pauseFlag = false;
+			}
+		}
+		function restart() {
+			life = 3;
+			timer = 3;
+			person.experience = 0;
+			enemies.splice(0, enemies.length);
+			rockets.splice(0, rockets.length);
+			pause();
+			start();
+		}
+		function changePlayer() {
+			pause();
+			init();
+			restart();
+		}
+		function choose() {
+			switch (document.getElementById('formMain').parametr.value) {
+				case '1':
+					speed = 5; size = 30; deviation = 2;
+					break;
+				case '2':
+					speed = 7.5; size = 20; deviation = 4;
+					break;
+				case '3':
+					speed = 10; size = 10; deviation = 6;
+					break;
+			}
+		}
+	</script>
+	<style>
+		table {
+			border: 1px solid black;
+			padding: 5px;
+			text-align: center;
+		}
+	</style>
+</head>
+
+<body onload="init();">
+	<canvas id="canvas" width="900" height="600" onmousemove="gunMove();" onclick="creationRockets();">
+	</canvas>
+	<br>
+	<br>
+	<form>
+		<input type="button" value="Пауза" onclick="pause()">
+		<input type="button" value="Продолжить" onclick="start()">
+		<input type="button" value="Рестарт" onclick="restart()">
+		<input type="button" value="Сменить игрока" onclick="changePlayer()">
+		<input type="button" value="Посмотреть таблицу" onclick="drawTable()">
+	</form><br>
+	<form id="formMain">
+		<input type="radio" name="parametr" id="easy" value="1" onclick="choose()"><label for="easy">Легко</label><br>
+		<input type="radio" name="parametr" id="normally" value="2" onclick="choose()"><label
+			for="normally">Нормально</label><br>
+		<input type="radio" name="parametr" id="complex" value="3" onclick="choose()"><label
+			for="complex">СЛОЖНО</label><br><br>
+	</form>
+	<div id="text"></div><br>
+</body>
+
+</html>
